@@ -1,0 +1,20 @@
+# Kernel source (synced by build.sh via repo)
+android15-6.6-89/
+
+# Cloned by build.sh
+AnyKernel3/
+susfs4ksu/
+SukiSU_patch/
+kernel-build-tools/
+mkbootimg/
+git-repo/
+toolchain/
+
+# Build outputs
+bootimgs/
+*.img
+*.zip
+build.log
+
+# Misc
+main/
