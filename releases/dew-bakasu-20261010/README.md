@@ -23,7 +23,7 @@ See `SHA256SUMS` before using any package or backup. The kernel booted successfu
 - Earlier ReSukiSU manager source: `9d0ff6aea9e25fc7dd26f4643175a41f68375e5e`, with `ReSukiSU-manager.patch` retained for provenance.
 - SUSFS source and Bazel build details are in the local `BakaSU-kernel-update/` workspace and its README.
 
-These patches record the exact tested source changes; some upstream SUSFS/ZRAM patch lines contain whitespace errors, which are preserved to match the installed build. This release record does not replace the existing `build.sh` workflow.
+These patches record the exact tested source changes; some upstream SUSFS/ZRAM patch lines contain whitespace errors, which are preserved to match the installed build. The repository root `build.sh` now applies these recorded patches to pinned source revisions and packages a new local AnyKernel3 ZIP. A rebuild still requires its own validation before flashing.
 
 ## Rollback
 

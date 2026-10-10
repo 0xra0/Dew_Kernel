@@ -19,3 +19,6 @@ build.log
 
 # Misc
 main/
+
+# Pinned local rebuild workspace
+.build/
