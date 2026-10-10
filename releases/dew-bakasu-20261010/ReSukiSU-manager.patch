@@ -1,0 +1,100 @@
+diff --git a/kernel/manager/apk_sign.c b/kernel/manager/apk_sign.c
+index d60e5d56..28fc6ae2 100644
+--- a/kernel/manager/apk_sign.c
++++ b/kernel/manager/apk_sign.c
+@@ -32,7 +32,8 @@ struct sdesc {
+ };
+ 
+ static apk_sign_key_t apk_sign_keys[] = {
+-    { EXPECTED_SIZE_RESUKISU, EXPECTED_HASH_RESUKISU }, /* ReSukiSU/ReSukiSU */
++    { EXPECTED_SIZE_RESUKISU, EXPECTED_HASH_RESUKISU }, /* ReSukiSU local debug build */
++    { EXPECTED_SIZE_RESUKISU_OFFICIAL, EXPECTED_HASH_RESUKISU_OFFICIAL }, /* ReSukiSU official release */
+ #ifdef CONFIG_KSU_MULTI_MANAGER_SUPPORT
+     { EXPECTED_SIZE_OFFICIAL, EXPECTED_HASH_OFFICIAL }, // tiann/KernelSU
+     { EXPECTED_SIZE_5EC1CFF, EXPECTED_HASH_5EC1CFF }, // 5ec1cff/KernelSU
+diff --git a/kernel/manager/manager_sign.h b/kernel/manager/manager_sign.h
+index 87e78338..0ef391bd 100644
+--- a/kernel/manager/manager_sign.h
++++ b/kernel/manager/manager_sign.h
+@@ -17,9 +17,13 @@
+ #define EXPECTED_SIZE_SUKISU 0x35c
+ #define EXPECTED_HASH_SUKISU "947ae944f3de4ed4c21a7e4f7953ecf351bfa2b36239da37a34111ad29993eef"
+ 
+-// ReSukiSU/ReSukiSU
+-#define EXPECTED_SIZE_RESUKISU 0x377
+-#define EXPECTED_HASH_RESUKISU "d3469712b6214462764a1d8d3e5cbe1d6819a0b629791b9f4101867821f1df64"
++// ReSukiSU/ReSukiSU (official release signing cert)
++#define EXPECTED_SIZE_RESUKISU_OFFICIAL 0x377
++#define EXPECTED_HASH_RESUKISU_OFFICIAL "d3469712b6214462764a1d8d3e5cbe1d6819a0b629791b9f4101867821f1df64"
++
++// ReSukiSU local debug build (Android debug keystore)
++#define EXPECTED_SIZE_RESUKISU 0x2E8
++#define EXPECTED_HASH_RESUKISU "1cf4a4e49a0124ad677dc1c2ec046df2110a681afeffa2c2e72431938a2503a1"
+ 
+ // KOWX712/KernelSU
+ #define EXPECTED_SIZE_KOWX712 0x375
+diff --git a/manager/app/src/main/java/com/resukisu/resukisu/data/kernel/KernelRepository.kt b/manager/app/src/main/java/com/resukisu/resukisu/data/kernel/KernelRepository.kt
+index f4b6181f..2ecfed03 100644
+--- a/manager/app/src/main/java/com/resukisu/resukisu/data/kernel/KernelRepository.kt
++++ b/manager/app/src/main/java/com/resukisu/resukisu/data/kernel/KernelRepository.kt
+@@ -40,8 +40,8 @@ class KernelRepository(
+                 false
+             ),
+             isSELinuxPermissive = runCatching { isSELinuxPermissive() }.getOrDefault(false),
+-            isOfficialSignature = runCatching {
+-                ksuCliRepository.isOfficialSignature(application.packageResourcePath)
++            isRecognizedSignature = runCatching {
++                ksuCliRepository.isRecognizedSignature(application.packageResourcePath)
+             }.getOrDefault(false),
+             kernelPatchImplementation = runCatching {
+                 Natives.getKernelPatchImplementation()
+diff --git a/manager/app/src/main/java/com/resukisu/resukisu/data/shell/KsuCli.kt b/manager/app/src/main/java/com/resukisu/resukisu/data/shell/KsuCli.kt
+index 2a133dfd..bd51f153 100644
+--- a/manager/app/src/main/java/com/resukisu/resukisu/data/shell/KsuCli.kt
++++ b/manager/app/src/main/java/com/resukisu/resukisu/data/shell/KsuCli.kt
+@@ -155,14 +155,16 @@ class KsuCliRepository(context: Context) {
+         return result
+     }
+ 
+-    suspend fun isOfficialSignature(packageResourcePath: String): Boolean =
++    suspend fun isRecognizedSignature(packageResourcePath: String): Boolean =
+         withContext(Dispatchers.IO) {
+             val shell = getRootShell()
+             val out = shell.newJob()
+                 .add("${getKsuDaemonPath()} debug get-sign ${shellQuote(packageResourcePath)}")
+                 .to(ArrayList<String>(), null).exec().out
+-            out.firstOrNull()?.trim()
+-                .orEmpty() == "size: 0x377, hash: d3469712b6214462764a1d8d3e5cbe1d6819a0b629791b9f4101867821f1df64"
++            val signature = out.firstOrNull()?.trim().orEmpty()
++            // Both certificates are listed in this kernel's manager_sign.h.
++            signature == "size: 0x377, hash: d3469712b6214462764a1d8d3e5cbe1d6819a0b629791b9f4101867821f1df64" ||
++                signature == "size: 0x2e8, hash: 1cf4a4e49a0124ad677dc1c2ec046df2110a681afeffa2c2e72431938a2503a1"
+         }
+ 
+     suspend fun getFeatureStatus(feature: String): String = withContext(Dispatchers.IO) {
+diff --git a/manager/app/src/main/java/com/resukisu/resukisu/domain/model/KernelState.kt b/manager/app/src/main/java/com/resukisu/resukisu/domain/model/KernelState.kt
+index 8e8730b5..b1e8a74a 100644
+--- a/manager/app/src/main/java/com/resukisu/resukisu/domain/model/KernelState.kt
++++ b/manager/app/src/main/java/com/resukisu/resukisu/domain/model/KernelState.kt
+@@ -25,7 +25,7 @@ data class KernelStatus(
+     val requireNewKernel: Boolean = false,
+     val uapiMismatch: Boolean = false,
+     val isSELinuxPermissive: Boolean = false,
+-    val isOfficialSignature: Boolean = true,
++    val isRecognizedSignature: Boolean = true,
+     val kernelPatchImplementation: KernelPatchImplementation = KernelPatchImplementation.NONE,
+     val hookType: String = "",
+     val isSafeMode: Boolean = false,
+diff --git a/manager/app/src/main/java/com/resukisu/resukisu/ui/screen/main/HomePage.kt b/manager/app/src/main/java/com/resukisu/resukisu/ui/screen/main/HomePage.kt
+index be02ba5b..e297be32 100644
+--- a/manager/app/src/main/java/com/resukisu/resukisu/ui/screen/main/HomePage.kt
++++ b/manager/app/src/main/java/com/resukisu/resukisu/ui/screen/main/HomePage.kt
+@@ -255,7 +255,7 @@ fun HomePage(
+                         Spacer(modifier = Modifier.height(10.dp))
+                     }
+ 
+-                    if (!uiState.systemStatus.isOfficialSignature) {
++                    if (!uiState.systemStatus.isRecognizedSignature) {
+                         WarningCard(
+                             message = stringResource(
+                                 R.string.unofficial_version_notice,

@@ -1,0 +1,64 @@
+diff --git a/manager/app/src/main/java/org/bakasu/bakasu/data/kernel/KernelRepository.kt b/manager/app/src/main/java/org/bakasu/bakasu/data/kernel/KernelRepository.kt
+index 1eafd5bc..3bc5efa4 100644
+--- a/manager/app/src/main/java/org/bakasu/bakasu/data/kernel/KernelRepository.kt
++++ b/manager/app/src/main/java/org/bakasu/bakasu/data/kernel/KernelRepository.kt
+@@ -37,8 +37,8 @@ class KernelRepository(
+             isFullFeatured = isRootAvailable && runCatching { Natives.isFullFeatured() }
+                 .getOrDefault(false),
+             isSELinuxPermissive = runCatching { isSELinuxPermissive() }.getOrDefault(false),
+-            isOfficialSignature = runCatching {
+-                ksuCliRepository.isOfficialSignature(application.packageResourcePath)
++            isRecognizedSignature = runCatching {
++                ksuCliRepository.isRecognizedSignature(application.packageResourcePath)
+             }.getOrDefault(false),
+             kernelPatchImplementation = runCatching {
+                 Natives.getKernelPatchImplementation()
+diff --git a/manager/app/src/main/java/org/bakasu/bakasu/data/shell/KsuCli.kt b/manager/app/src/main/java/org/bakasu/bakasu/data/shell/KsuCli.kt
+index 3bbb1b12..40cb2bb5 100644
+--- a/manager/app/src/main/java/org/bakasu/bakasu/data/shell/KsuCli.kt
++++ b/manager/app/src/main/java/org/bakasu/bakasu/data/shell/KsuCli.kt
+@@ -145,13 +145,15 @@ class KsuCliRepository(context: Context) {
+         return result
+     }
+ 
+-    suspend fun isOfficialSignature(packageResourcePath: String): Boolean = withContext(Dispatchers.IO) {
++    suspend fun isRecognizedSignature(packageResourcePath: String): Boolean = withContext(Dispatchers.IO) {
+         val shell = getRootShell()
+         val out = shell.newJob()
+             .add("${getKsuDaemonPath()} debug get-sign ${shellQuote(packageResourcePath)}")
+             .to(ArrayList<String>(), null).exec().out
+-        out.firstOrNull()?.trim()
+-            .orEmpty() == "size: 0x377, hash: d3469712b6214462764a1d8d3e5cbe1d6819a0b629791b9f4101867821f1df64"
++        out.firstOrNull()?.trim().orEmpty() in setOf(
++            "size: 0x377, hash: d3469712b6214462764a1d8d3e5cbe1d6819a0b629791b9f4101867821f1df64",
++            "size: 0x2e8, hash: 1cf4a4e49a0124ad677dc1c2ec046df2110a681afeffa2c2e72431938a2503a1",
++        )
+     }
+ 
+     suspend fun getFeatureStatus(feature: String): String = withContext(Dispatchers.IO) {
+diff --git a/manager/app/src/main/java/org/bakasu/bakasu/domain/model/KernelState.kt b/manager/app/src/main/java/org/bakasu/bakasu/domain/model/KernelState.kt
+index 0207a86b..214adccc 100644
+--- a/manager/app/src/main/java/org/bakasu/bakasu/domain/model/KernelState.kt
++++ b/manager/app/src/main/java/org/bakasu/bakasu/domain/model/KernelState.kt
+@@ -24,7 +24,7 @@ data class KernelStatus(
+     val isRootAvailable: Boolean = false,
+     val isFullFeatured: Boolean = false,
+     val isSELinuxPermissive: Boolean = false,
+-    val isOfficialSignature: Boolean = true,
++    val isRecognizedSignature: Boolean = true,
+     val kernelPatchImplementation: KernelPatchImplementation = KernelPatchImplementation.NONE,
+     val hookType: String = "",
+     val isSafeMode: Boolean = false,
+diff --git a/manager/app/src/main/java/org/bakasu/bakasu/ui/screen/main/HomePage.kt b/manager/app/src/main/java/org/bakasu/bakasu/ui/screen/main/HomePage.kt
+index fa7520f5..fd1b49c1 100644
+--- a/manager/app/src/main/java/org/bakasu/bakasu/ui/screen/main/HomePage.kt
++++ b/manager/app/src/main/java/org/bakasu/bakasu/ui/screen/main/HomePage.kt
+@@ -251,7 +251,7 @@ fun HomePage(
+                     Spacer(modifier = Modifier.height(10.dp))
+                 }
+ 
+-                if (!uiState.systemStatus.isOfficialSignature) {
++                if (!uiState.systemStatus.isRecognizedSignature) {
+                     WarningCard(
+                         message = stringResource(
+                             R.string.unofficial_version_notice,
