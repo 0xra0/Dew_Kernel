@@ -4,6 +4,8 @@ This records the build installed on the existing ProjectInfinity-X Android 16 GS
 
 ## Local artifacts
 
+The [GitHub release](https://github.com/0xra0/Dew_Kernel/releases/tag/v6.6.118-20261010) contains the tested AnyKernel3 ZIP, matching locally signed manager APK, and `ASSET_SHA256SUMS` for those two downloads.
+
 The complete build workspace, source checkouts, logs, packages, and rollback image are stored outside Git at `/mnt/sata/dew-kernel-20261010/`. The principal files are:
 
 - `BakaSU-dew-GKI6.6.118-SUSFS-AnyKernel3-20261010.zip` — flashable kernel package.
