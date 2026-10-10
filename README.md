@@ -36,7 +36,7 @@ For another phone or slot, use **that phone and slot's own** known-working `boot
 
 ## Build the kernel from source
 
-The repository's `build.sh` now uses **pinned** revisions, not moving upstream branches. The [release directory](releases/dew-bakasu-20261010/) stores the exact tracked-source patches and added files for the tested build. These are the important inputs:
+The repository's `build.sh` pins the kernel, BakaSU, and AnyKernel3 commits. The rest of the Android build dependencies come from the named AOSP manifest branch, which may change after this release. The [release directory](releases/dew-bakasu-20261010/) stores the exact tracked-source patches and added files for the tested build. These are the important inputs:
 
 | Component | Pinned source |
 | --- | --- |
@@ -66,4 +66,18 @@ The script checks the built `Image` for the exact stock-compatible release strin
 
 ### Building the manager APK
 
-The released APK is the tested manager. Its source is the same pinned BakaSU revision with [BakaSU-manager.patch](releases/dew-bakasu-20261010/BakaSU-manager.patch). The manager uses Android Gradle, Rust/Cargo, Android SDK/NDK, and a signing key. For an independent build, apply that patch to a separate checkout, use the Gradle tasks in the pinned BakaSU `manager/` source, then sign with **your own** key. A differently signed APK will not be accepted by the shipped kernel's local-signature entry and may not upgrade the installed package. To use another signing key, rebuild the kernel with its matching manager certificate and install the APK according to Android's package-signature rules. The signing private key is not in this repository.
+The released APK is the tested manager. Its source is the same pinned BakaSU revision with [BakaSU-manager.patch](releases/dew-bakasu-20261010/BakaSU-manager.patch). The manager uses Android Gradle, Rust/Cargo, Android SDK/NDK, and a signing key. For an independent build, use a separate checkout and apply the recorded manager patch:
+
+```sh
+git clone https://github.com/Baka-SU/BakaSU.git BakaSU-manager
+cd BakaSU-manager
+git checkout --detach 5b76b884c75f729a220bb317aa4a4fc78f0e0e9c
+git apply /path/to/Dew_Kernel/releases/dew-bakasu-20261010/BakaSU-manager.patch
+cd manager
+# Configure Android SDK/NDK, Rust/Cargo, and your own signing key.
+# See sign.example.properties for KEYSTORE_FILE, KEYSTORE_PASSWORD,
+# KEY_ALIAS, and KEY_PASSWORD; keep the real values private.
+./gradlew assembleRelease
+```
+
+Sign with **your own** key. A differently signed APK will not be accepted by the shipped kernel's local-signature entry and may not upgrade the installed package. To use another signing key, rebuild the kernel with its matching manager certificate and install the APK according to Android's package-signature rules. The signing private key is not in this repository.

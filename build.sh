@@ -41,6 +41,10 @@ prepare() {
         (cd "$WORKSPACE" && "$repo_bin" init -u https://android.googlesource.com/kernel/manifest -b common-android15-6.6-2026-01 && "$repo_bin" sync -c -j"${JOBS:-4}" --no-tags --fail-fast)
     fi
     [[ -d "$COMMON/.git" ]] || die "common source missing after repo sync"
+    if [[ "$(git -C "$COMMON" rev-parse HEAD)" != "$COMMON_REV" ]]; then
+        git -C "$COMMON" diff --quiet && git -C "$COMMON" diff --cached --quiet || die "common source has local edits; use a clean workspace"
+        git -C "$COMMON" checkout --detach "$COMMON_REV" || die "pinned common commit is unavailable; fetch its AOSP branch"
+    fi
     require_rev "$COMMON" "$COMMON_REV"
     if [[ ! -d "$KSU/.git" ]]; then
         git clone https://github.com/Baka-SU/BakaSU.git "$KSU"
