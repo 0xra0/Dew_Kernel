@@ -17,7 +17,7 @@ Verify downloads with `sha256sum -c ASSET_SHA256SUMS` in the directory containin
 ## Install on the tested setup
 
 1. Confirm the phone is `dew`, the bootloader is unlocked, Android boots normally, and the vendor is still `OS3.0.301.0.WBNEUXM`. Back up important data. In Android, run `adb shell getprop ro.product.vendor.device`, `adb shell getprop ro.vendor.build.fingerprint`, and `adb reboot bootloader`; in bootloader fastboot, run `fastboot devices` and `fastboot getvar current-slot`. Record the slot.
-2. Keep a **known-working backup of that slot's `boot` partition** before changing the kernel. The backup referenced in the release record is from one tested phone's `boot_a`; it is not a universal image. Keep a matching stock firmware boot image available for rollback.
+2. Keep a **known-working image of that phone's active `boot` partition** before changing the kernel, and copy it to your computer. If you already have root or a recovery that can read `boot`, back up the active slot and verify the saved image is nonempty. Alternatively, keep the `boot.img` from the exact firmware currently installed **only if you know that image boots your current setup**. A matching vendor version alone does not prove that the firmware image matches a modified GSI boot setup. The backup in the release record belongs to one tested phone and must not be used as another phone's rollback image. Do not flash if you have no verified rollback image.
 3. Boot the working OrangeFox r2 recovery for this phone. Use its **Install** screen to choose the downloaded AnyKernel3 ZIP (or its ADB Sideload screen with `adb sideload BakaSU-dew-GKI6.6.118-SUSFS-AnyKernel3-20261010.zip`). Wait for `Done!` and `Process ended with no errors` before rebooting to System. The ZIP is for recovery, **not** `fastboot flash`, and recovery flashing still changes the active slot's `boot` image.
 4. Once Android fully boots, install the matching APK with `adb install -r BakaSU-v4.2.0-rc3-dew-local-arm64-v8a.apk` or Android's package installer. Open BakaSU and confirm it reports **Working**, driver **v4.2.0-rc3 (35222/5)**, and **SUSFS v2.3.0**. If Android fails to boot, restore the saved boot image before trying another package.
 
@@ -25,14 +25,14 @@ Do not use fastbootd for a `boot` or `vendor_boot` rollback. Do not flash the ke
 
 ### Rollback after a kernel boot loop
 
-Enter **bootloader fastboot** with Power + Volume Down, connect USB, and check `fastboot devices` and `fastboot getvar current-slot`. For the tested phone **only if the active slot is still `a`**, restore its known-working slot-A backup:
+Enter **bootloader fastboot** with Power + Volume Down, connect USB, and check `fastboot devices`, `fastboot getvar is-userspace`, and `fastboot getvar current-slot`. Continue only with `is-userspace: no` and the same slot recorded before installation. If that slot was `a`, restore **your own verified, known-working slot-A image**:
 
 ```sh
-fastboot flash boot_a /mnt/sata/dew-kernel-20261010/BakaSU-kernel-update/boot_a-working-before-BakaSU.img
+fastboot flash boot_a ./boot_a-known-working.img
 fastboot reboot
 ```
 
-For another phone or slot, use **that phone and slot's own** known-working `boot` image. If the current slot differs from the one recorded before installation, determine why before writing anything. A module-related boot loop may be recoverable through BakaSU module safe mode (press and release Volume Down at least three times after the first boot screen), then remove the offending module.
+Replace the filename with the actual path to your saved image; the example file is not supplied by this repository. For another slot, use **that phone and slot's own** known-working `boot` image. If the current slot differs from the one recorded before installation, determine why before writing anything. A module-related boot loop may be recoverable through BakaSU module safe mode (press and release Volume Down at least three times after the first boot screen), then remove the offending module.
 
 ## Build the kernel from source
 
